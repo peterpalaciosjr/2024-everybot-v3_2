@@ -1,7 +1,10 @@
 package frc.robot;
 
 
-import edu.wpi.first.math.MathUtil;
+
+import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkLowLevel.MotorType;
+
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -9,6 +12,10 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class Robot extends TimedRobot {
@@ -25,10 +32,12 @@ public class Robot extends TimedRobot {
   //PWMSparkMax leftFront = new PWMSparkMax(1);
   PWMSparkMax rightRear, rightFront = new PWMSparkMax(2);
   //PWMSparkMax rightFront = new PWMSparkMax(2);
-  PWMSparkMax m_launchWheel = new PWMSparkMax(3);
-  PWMSparkMax m_feedWheel = new PWMSparkMax(4);
-  PWMSparkMax m_rollerClaw = new PWMSparkMax(5);
+  CANSparkMax m_launchWheel = new CANSparkMax(3, MotorType.kBrushless);
+  CANSparkMax m_feedWheel = new CANSparkMax(4, MotorType.kBrushless);
+  CANSparkMax m_rollerClaw = new CANSparkMax(5, MotorType.kBrushless);
   
+
+
   DifferentialDrive m_drivetrain;
 
   Joystick m_driverController = new Joystick(0);
@@ -92,6 +101,7 @@ public class Robot extends TimedRobot {
 
   
   double AUTO_LAUNCH_DELAY_S;
+  double AUTO_LAUNCH_DELAY_S2;
   double AUTO_DRIVE_DELAY_S;
 
   double AUTO_DRIVE_TIME_S;
@@ -101,16 +111,22 @@ public class Robot extends TimedRobot {
 
   double autonomousStartTime;
 
+  double autoDriveSpeed1;
+  double autoDriveSpeed2;
+
+  String autoChoice = "STRAIGHT";
+
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
 
    
 
-    AUTO_LAUNCH_DELAY_S = 2;
-    AUTO_DRIVE_DELAY_S = 4;
+    AUTO_LAUNCH_DELAY_S = 4.0;
+    AUTO_LAUNCH_DELAY_S2 = 6.5;
+    AUTO_DRIVE_DELAY_S = 7.5;
 
-    AUTO_DRIVE_TIME_S = 1.5;
+    AUTO_DRIVE_TIME_S = 6.5;
     AUTO_DRIVE_SPEED = -0.3;
     AUTO_LAUNCHER_SPEED = 1;
     
@@ -130,35 +146,56 @@ public class Robot extends TimedRobot {
     }
 
     autonomousStartTime = Timer.getFPGATimestamp();
+
+  if (autoChoice == "STRAIGHT")
+  {
+    autoDriveSpeed1 = -0.8;
+    autoDriveSpeed2 = -0.8;
+  }
+  else if(autoChoice == "RIGHT")
+  {
+    autoDriveSpeed1 = -0.5;
+    autoDriveSpeed2 = -0.6;
+  }
+  else if(autoChoice == "LEFT")
+  {
+    autoDriveSpeed1 = -0.6;
+    autoDriveSpeed2 = -0.5;
+  }
+  else
+  {
+    autoDriveSpeed1 = 0;
+    autoDriveSpeed2 = 0;
+  }
+  
   }
 
-  
+
+
   @Override
   public void autonomousPeriodic() {
+
 
     double timeElapsed = Timer.getFPGATimestamp() - autonomousStartTime;
 
 
     if(timeElapsed < AUTO_LAUNCH_DELAY_S)
     {
-      m_launchWheel.set(AUTO_LAUNCHER_SPEED);
-      m_drivetrain.arcadeDrive(0, 0);
-
+    m_launchWheel.set(-LAUNCHER_BUMPER_SPEED);
     }
-    else if(timeElapsed < AUTO_DRIVE_DELAY_S)
+    else if (timeElapsed < AUTO_LAUNCH_DELAY_S2)
     {
-      m_feedWheel.set(AUTO_LAUNCHER_SPEED);
-      m_drivetrain.arcadeDrive(0, 0);
+    m_feedWheel.set(FEEDER_IN_SPEED);
     }
-    else if(timeElapsed < AUTO_DRIVE_DELAY_S + AUTO_DRIVE_TIME_S)
+    else if (timeElapsed < AUTO_DRIVE_DELAY_S)
     {
-      m_launchWheel.set(0);
       m_feedWheel.set(0);
-      m_drivetrain.arcadeDrive(AUTO_DRIVE_SPEED, 0);
+      m_launchWheel.set(0);
+      m_drivetrain.tankDrive(autoDriveSpeed1, autoDriveSpeed2);
     }
     else
     {
-      m_drivetrain.arcadeDrive(0, 0);
+      m_drivetrain.tankDrive(0, 0);
     }
     
   }
@@ -174,49 +211,51 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
 
-    
-    if (m_manipController.getPOV() == 0) {
-      m_launchWheel.set(-LAUNCHER_BUMPER_SPEED);
-    }
-    else if(m_manipController.getPOV() == 90)
-    {
-      m_launchWheel.set(-LAUNCHER_MIDFIELD_SPEED);
-    }
-    else if(m_manipController.getPOV() == 180)
-    {
-      //m_launchWheel.set(LAUNCHER_AMP_SPEED);
-    }
-    else if(m_manipController.getPOV() == 270)
-    {
-      m_launchWheel.set(LAUNCHER_INTAKE_SPEED);
-      m_feedWheel.set(-FEEDER_IN_SPEED);
-    }
-    else 
-    {
-      m_launchWheel.set(0);
-      m_feedWheel.set(0);
-    }
-
 
     if (m_manipController.getRawButton(6))
     {
-      m_feedWheel.set(-FEEDER_OUT_SPEED);
+      System.out.println("I AM RUNNING3");
+      m_feedWheel.set(FEEDER_IN_SPEED);
+      m_launchWheel.set(-LAUNCHER_BUMPER_SPEED);
     }
-    else if(m_manipController.getRawButtonReleased(6))
+    else if (m_manipController.getPOV() == 0) {
+      System.out.println("THis is RUNNING");
+      m_launchWheel.set(-LAUNCHER_BUMPER_SPEED);
+       m_feedWheel.set(0);
+    }
+    else if(m_manipController.getPOV() == 90)
     {
+      System.out.println("I AM RUNNING1");
+      m_launchWheel.set(-LAUNCHER_MIDFIELD_SPEED);
+       m_feedWheel.set(0);
+    }
+    else if(m_manipController.getPOV() == 180)
+    {
+      // m_launchWheel.set(LAUNCHER_AMP_SPEED);
+      m_feedWheel.set(0);
+    }
+    else if(m_manipController.getPOV() == 270)
+    {
+      System.out.println("I AM RUNNING2");
+      m_launchWheel.set(LAUNCHER_INTAKE_SPEED);
+      m_feedWheel.set(-FEEDER_IN_SPEED);
+    }
+    else if (m_manipController.getRawButton(5))
+    {
+      m_launchWheel.set(-1.0);
+      m_feedWheel.set(0);
+    }
+    else
+    {
+      m_launchWheel.set(0);
       m_feedWheel.set(0);
     }
 
 
-    if (m_manipController.getRawButton(5))
-    {
-      m_launchWheel.set(1.0);
-    }
-    else if(m_manipController.getRawButtonReleased(5))
-    {
-      m_launchWheel.set(0);
-    }
 
+
+    
+    
 
     if(m_manipController.getRawButton(3))
     {
